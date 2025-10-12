@@ -1,6 +1,6 @@
 {
   "name": "synv",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sync-something CLI",
   "type": "module",
   "bin": {
@@ -15,14 +15,14 @@
     "env"
   ],
   "license": "MIT",
-  "author": "Your Name",
+  "author": "Nuanced Engineering",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/synv.git"
+    "url": "git+https://github.com/dak-engineering/synv.git"
   },
-  "homepage": "https://github.com/yourusername/synv#readme",
+  "homepage": "https://github.com/dak-engineering/synv#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/synv/issues"
+    "url": "https://github.com/dak-engineering/synv/issues"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
