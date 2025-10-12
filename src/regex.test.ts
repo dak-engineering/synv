@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ENV_VAR_REGEX } from './regex'
+import { ENV_VAR_REGEX } from './regex.js'
 
 describe('ENV_VAR_REGEX', () => {
   it('should match valid environment variable declarations', () => {

@@ -6,9 +6,9 @@ import fs from 'node:fs/promises'
 import fuzz from 'fuzzbunny'
 import path from 'node:path'
 import ora from 'ora'
-import extractEnvironmentVariablesFromFileLines from './extract-environment-variables-from-file-lines'
-import { ENV_VAR_REGEX } from './regex'
-import extractKeyValueFromString from './extract-key-value-from-string'
+import extractEnvironmentVariablesFromFileLines from './extract-environment-variables-from-file-lines.js'
+import { ENV_VAR_REGEX } from './regex.js'
+import extractKeyValueFromString from './extract-key-value-from-string.js'
 
 const {
 	bold,
@@ -27,12 +27,14 @@ const syncCommand = command({
 			long: 'env-example-file',
 			short: 'x',
 			description: 'Relative path to .env.example file',
+			defaultValue: () => '.env.example',
 		}),
 		envFilePath: option({
 			type: string,
 			long: 'env-file',
 			short: 'e',
 			description: 'Relative path to .env file',
+			defaultValue: () => '.env',
 		}),
 		skipBackup: flag({
 			long: 'skip-backup',

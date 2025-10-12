@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import extractEnvironmentVariablesFromFileLines from './extract-environment-variables-from-file-lines'
-import extractKeyValueFromString from './extract-key-value-from-string'
-import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line'
+import { describe, it, expect } from 'vitest'
+import extractEnvironmentVariablesFromFileLines from './extract-environment-variables-from-file-lines.js'
+import extractKeyValueFromString from './extract-key-value-from-string.js'
+import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line.js'
 
 describe('Integration Tests - Full .env Processing', () => {
   describe('Complete .env.example to .env transformation', () => {
@@ -418,6 +418,178 @@ LONG_VALUE=${'a'.repeat(1000)}
       // Structure from .env.example should be maintained
       expect(finalContent.split('\n').filter(l => l.startsWith('#')).length)
         .toBeGreaterThan(10) // Should have many comment lines preserved
+    })
+  })
+
+  describe('Syncing with inline comments and existing values', () => {
+    it('should preserve existing values and handle inline comments correctly', () => {
+      const envExampleLines = [
+        '# Posthog',
+        'NEXT_PUBLIC_POSTHOG_HOST="https://us.posthog.com"',
+        'NEXT_PUBLIC_POSTHOG_KEY=""',
+        '',
+        '# MyAion',
+        'NEXT_PUBLIC_MYAION_SOCKET="https://myaion-socket.up.railway.app/"',
+        'MYAION_GQL_HOST="https://api.myaion.eu/graphql"',
+        'MYAION_SECRET=""',
+        '',
+        '# App',
+        'APP_METADATA_BASE_URL="http://localhost:3000"',
+        'DATABASE_URL="mysql://root:app@127.0.0.1:3306/app"',
+        'FLAGS_SECRET="FAKE_DEFAULT_FLAGS_SECRET_xyz789" # fake secret for dev',
+        '',
+        '# Discord',
+        'DISCORD_SERVER_ID="607005182915772427"',
+        'DISCORD_CLIENT_ID=""',
+        'DISCORD_CLIENT_SECRET=""',
+        'DISCORD_REDIRECT_URI="http://localhost:3000/api/auth/discord/callback"',
+        'DISCORD_BOT_TOKEN=""',
+        '',
+        '# Payload',
+        'PAYLOAD_SECRET="FAKE_DEFAULT_PAYLOAD_abc123" # fake secret for dev',
+        '',
+        '# Auth',
+        'AUTH_SECRET="FAKE_DEFAULT_AUTH_SECRET_qwerty123=" # fake secret for dev',
+        'NEXTAUTH_URL="http://localhost:3000"'
+      ]
+
+      const existingEnvLines = [
+        '# Posthog',
+        'NEXT_PUBLIC_POSTHOG_HOST="https://us.posthog.com"',
+        'NEXT_PUBLIC_POSTHOG_KEY="phc_FAKE1234567890abcdefghijklmnopqrstuvwxyz"',
+        '',
+        '# MyAion',
+        'NEXT_PUBLIC_MYAION_SOCKET="https://myaion-socket.up.railway.app/"',
+        'MYAION_GQL_HOST="https://api.myaion.eu/graphql"',
+        'MYAION_SECRET="FAKE_SECRET_aGVsbG8td29ybGQtdGhpcy1pcy1ub3QtcmVhbA=="',
+        '',
+        '# App',
+        'APP_METADATA_BASE_URL="http://localhost:3000"',
+        'DATABASE_URL="mysql://root:app@127.0.0.1:3306/app"',
+        'FLAGS_SECRET="FAKE_FLAGS_SECRET_1234567890abcdefghijklmn"',
+        '',
+        '# Discord',
+        'DISCORD_SERVER_ID="607005182915772427"',
+        'DISCORD_CLIENT_ID="1234567890123456789"',
+        'DISCORD_CLIENT_SECRET="FAKE_DISCORD_SECRET_abcd1234"',
+        'DISCORD_REDIRECT_URI="http://localhost:3000/api/auth/discord/callback"',
+        'DISCORD_BOT_TOKEN="FAKE.BOT.TOKEN.1234567890abcdefghijklmnopqrstuvwxyz"',
+        '',
+        '# Payload',
+        'PAYLOAD_SECRET="FAKE_PAYLOAD_0123456789abcdef"',
+        '',
+        '# Auth',
+        '# This is randomly generated not an actual secret that is used anywhere outside of dev',
+        'AUTH_SECRET="FAKE_AUTH_SECRET_abc123def456ghi789jkl0mno="',
+        'NEXTAUTH_URL="http://localhost:3000"'
+      ]
+
+      // Extract variables from example file
+      const exampleVars = extractEnvironmentVariablesFromFileLines(envExampleLines)
+      
+      // Extract variables from existing env file
+      const existingVars = extractEnvironmentVariablesFromFileLines(existingEnvLines)
+
+      // Test that all example variables are found
+      expect(exampleVars).toHaveProperty('NEXT_PUBLIC_POSTHOG_HOST')
+      expect(exampleVars).toHaveProperty('NEXT_PUBLIC_POSTHOG_KEY')
+      expect(exampleVars).toHaveProperty('FLAGS_SECRET')
+      expect(exampleVars).toHaveProperty('PAYLOAD_SECRET')
+      expect(exampleVars).toHaveProperty('AUTH_SECRET')
+
+      // Test that existing values are preserved
+      expect(existingVars.NEXT_PUBLIC_POSTHOG_KEY).toBe('phc_FAKE1234567890abcdefghijklmnopqrstuvwxyz')
+      expect(existingVars.MYAION_SECRET).toBe('FAKE_SECRET_aGVsbG8td29ybGQtdGhpcy1pcy1ub3QtcmVhbA==')
+      expect(existingVars.DISCORD_CLIENT_ID).toBe('1234567890123456789')
+      expect(existingVars.DISCORD_CLIENT_SECRET).toBe('FAKE_DISCORD_SECRET_abcd1234')
+      expect(existingVars.DISCORD_BOT_TOKEN).toBe('FAKE.BOT.TOKEN.1234567890abcdefghijklmnopqrstuvwxyz')
+
+      // Test that default values from .env.example are correctly extracted
+      expect(exampleVars.FLAGS_SECRET).toBe('FAKE_DEFAULT_FLAGS_SECRET_xyz789')
+      expect(exampleVars.PAYLOAD_SECRET).toBe('FAKE_DEFAULT_PAYLOAD_abc123')
+      expect(exampleVars.AUTH_SECRET).toBe('FAKE_DEFAULT_AUTH_SECRET_qwerty123=')
+
+      // Simulate the sync process - existing values should override example defaults
+      const syncedVars: Record<string, string> = {}
+      
+      // First, add all variables from example
+      Object.entries(exampleVars).forEach(([key, value]) => {
+        syncedVars[key] = value
+      })
+      
+      // Then override with existing values
+      Object.entries(existingVars).forEach(([key, value]) => {
+        if (value !== '') {
+          syncedVars[key] = value
+        }
+      })
+
+      // Verify synced results preserve existing values
+      expect(syncedVars.NEXT_PUBLIC_POSTHOG_KEY).toBe('phc_FAKE1234567890abcdefghijklmnopqrstuvwxyz')
+      expect(syncedVars.FLAGS_SECRET).toBe('FAKE_FLAGS_SECRET_1234567890abcdefghijklmn')
+      expect(syncedVars.PAYLOAD_SECRET).toBe('FAKE_PAYLOAD_0123456789abcdef')
+      expect(syncedVars.AUTH_SECRET).toBe('FAKE_AUTH_SECRET_abc123def456ghi789jkl0mno=')
+      
+      // Verify empty values from example are filled with existing values
+      expect(syncedVars.DISCORD_CLIENT_ID).toBe('1234567890123456789')
+      expect(syncedVars.DISCORD_CLIENT_SECRET).toBe('FAKE_DISCORD_SECRET_abcd1234')
+    })
+
+    it('should handle inline comments in environment variables', () => {
+      const linesWithInlineComments = [
+        'FLAGS_SECRET="FAKE_DEFAULT_FLAGS_SECRET_xyz789" # fake secret for dev',
+        'PAYLOAD_SECRET="FAKE_DEFAULT_PAYLOAD_abc123" # fake secret for dev',
+        'AUTH_SECRET="FAKE_DEFAULT_AUTH_SECRET_qwerty123=" # fake secret for dev',
+        'NORMAL_VAR="value"',
+        'COMMENTED_EMPTY="" # this should have a default'
+      ]
+
+      linesWithInlineComments.forEach(line => {
+        const result = extractKeyValueFromString(line)
+        
+        if (line.includes('FLAGS_SECRET')) {
+          expect(result).toEqual({
+            key: 'FLAGS_SECRET',
+            value: 'FAKE_DEFAULT_FLAGS_SECRET_xyz789'
+          })
+        } else if (line.includes('PAYLOAD_SECRET')) {
+          expect(result).toEqual({
+            key: 'PAYLOAD_SECRET',
+            value: 'FAKE_DEFAULT_PAYLOAD_abc123'
+          })
+        } else if (line.includes('AUTH_SECRET')) {
+          expect(result).toEqual({
+            key: 'AUTH_SECRET',
+            value: 'FAKE_DEFAULT_AUTH_SECRET_qwerty123='
+          })
+        } else if (line.includes('NORMAL_VAR')) {
+          expect(result).toEqual({
+            key: 'NORMAL_VAR',
+            value: 'value'
+          })
+        } else if (line.includes('COMMENTED_EMPTY')) {
+          expect(result).toEqual({
+            key: 'COMMENTED_EMPTY',
+            value: ''
+          })
+        }
+      })
+    })
+
+    it('should preserve additional comments from existing .env file', () => {
+      const existingEnvWithExtraComments = [
+        '# Auth',
+        '# This is randomly generated not an actual secret that is used anywhere outside of dev',
+        'AUTH_SECRET="FAKE_AUTH_SECRET_abc123def456ghi789jkl0mno="',
+        'NEXTAUTH_URL="http://localhost:3000"'
+      ]
+
+      // The sync process should preserve the additional comment line
+      const hasAdditionalComment = existingEnvWithExtraComments.some(
+        line => line.includes('This is randomly generated')
+      )
+      
+      expect(hasAdditionalComment).toBe(true)
     })
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line'
+import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line.js'
 
 describe('extractEnvironmentVariableValueFromLine', () => {
   describe('basic values', () => {

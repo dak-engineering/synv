@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import extractKeyValueFromString from './extract-key-value-from-string'
+import extractKeyValueFromString from './extract-key-value-from-string.js'
 
 describe('extractKeyValueFromString', () => {
   describe('valid environment variable lines', () => {

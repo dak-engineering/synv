@@ -1,5 +1,5 @@
-import { ENV_VAR_REGEX } from './regex'
-import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line'
+import { ENV_VAR_REGEX } from './regex.js'
+import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line.js'
 
 const extractKeyValueFromString = (str: string) => {
 	const match = str.match(ENV_VAR_REGEX)

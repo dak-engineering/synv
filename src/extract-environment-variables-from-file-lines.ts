@@ -1,5 +1,5 @@
-import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line'
-import { ENV_VAR_REGEX } from './regex'
+import extractEnvironmentVariableValueFromLine from './extract-environment-variable-value-from-line.js'
+import { ENV_VAR_REGEX } from './regex.js'
 
 const extractEnvironmentVariablesFromFileLines = (lines: string[]) => {
 	const environmentVariables: Record<string, string> = {}
