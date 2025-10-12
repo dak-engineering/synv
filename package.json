@@ -15,6 +15,15 @@
     "env"
   ],
   "license": "MIT",
+  "author": "Your Name",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/synv.git"
+  },
+  "homepage": "https://github.com/yourusername/synv#readme",
+  "bugs": {
+    "url": "https://github.com/yourusername/synv/issues"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx src/cli.ts",
