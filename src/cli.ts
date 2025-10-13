@@ -140,8 +140,18 @@ const syncCommand = command({
 			}
 		}
 
-		// const
-		// newEnvLines.push('# Additional variables from existing .env')
+		// Add any variables from existing .env that weren't in .env.example
+		for (const [key, value] of Object.entries(envFileVariables)) {
+			if (!processedKeys.has(key)) {
+				log(`Preserving additional variable ${bold(key)}`)
+				newEnvLines.push(`${key}="${value}"`)
+			}
+		}
+
+		// Write the new content to the .env file
+		const newEnvContent = newEnvLines.join('\n')
+		await fs.writeFile(envFile.path, newEnvContent, 'utf8')
+		log(green(`✓ Successfully updated ${bold(path.basename(envFile.path))}`))
 	}
 });
 
