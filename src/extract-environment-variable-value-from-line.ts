@@ -1,5 +1,3 @@
-import { string } from 'cmd-ts'
-
 const extractEnvironmentVariableValueFromLine = (value: string) => {
 	let result = ''
 	let insideQuotes = false

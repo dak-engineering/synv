@@ -1,19 +1,15 @@
 #!/usr/bin/env node
 import { command, run, string, option, flag, boolean } from 'cmd-ts'
 import { search, confirm, select, input } from '@inquirer/prompts'
-import chalk from 'chalk';
+import chalk from 'chalk'
 import fs from 'node:fs/promises'
 import fuzz from 'fuzzbunny'
 import path from 'node:path'
 import ora from 'ora'
 import extractEnvironmentVariablesFromFileLines from './extract-environment-variables-from-file-lines.js'
-import { ENV_VAR_REGEX } from './regex.js'
 import extractKeyValueFromString from './extract-key-value-from-string.js'
 
-const {
-	bold,
-	green,
-} = chalk
+const { bold, green, red } = chalk
 
 const cwdFiles = await fs.readdir('.')
 
@@ -21,7 +17,6 @@ const syncCommand = command({
 	name: 'synv',
 	description: 'Synchronise your stuff',
 	args: {
-		// target: option({ long: 'target', short: 't', type: string, description: 'Target folder' })
 		envExampleFilePath: option({
 			type: string,
 			long: 'env-example-file',
@@ -81,7 +76,8 @@ const syncCommand = command({
 		const envExampleFileVariables = extractEnvironmentVariablesFromFileLines(envExampleFile.lines)
 
 		const newEnvLines: string[] = []
-		const processedKeys = new Set()
+		const processedKeys = new Set<string>()
+		
 		for (const line of envExampleFile.lines) {
 			const trimmedLine = line.trim()
 
@@ -98,9 +94,13 @@ const syncCommand = command({
 
 			processedKeys.add(exampleEnvVar.key)
 
-			const currentValue = exampleEnvVar.key in envFileVariables && envFileVariables[exampleEnvVar.key]
-			if (currentValue !== false) {
-				if (exampleEnvVar.value === '' || currentValue === exampleEnvVar.value) {
+			const currentValue = envFileVariables[exampleEnvVar.key]
+			const hasCurrentValue = currentValue !== undefined
+			
+			if (hasCurrentValue) {
+				const valuesMatch = exampleEnvVar.value === '' || currentValue === exampleEnvVar.value
+				
+				if (valuesMatch) {
 					log(`Keeping ${bold(exampleEnvVar.key)}`)
 					newEnvLines.push(`${exampleEnvVar.key}="${currentValue}"`)
 				} else {
@@ -153,38 +153,7 @@ const syncCommand = command({
 		await fs.writeFile(envFile.path, newEnvContent, 'utf8')
 		log(green(`✓ Successfully updated ${bold(path.basename(envFile.path))}`))
 	}
-});
-
-type EnvLine = {
-	type: 'kv-comment'
-	key: string
-	value: string
-	comment: string
-} | {
-	type: 'comment'
-	key?: never
-	value?: never
-	comment: string
-} | {
-	type: 'kv'
-	key: string
-	value: string
-	comment?: never
-}
-
-const lineToEnvLine = (line: string) => {
-	if (line.trim().startsWith('#')) {
-		return {
-			comment: line,
-		}
-	} else if (line.trim().match(ENV_VAR_REGEX)) {
-		return extractKeyValueFromString(line)
-	}
-}
-
-const isValidEnvironmentVariableLine = (line: string) => {
-	return line.match(ENV_VAR_REGEX) !== null
-}
+})
 
 const backupFile = async (filepath: string) => {
 	await loadWhile('Backing up .env file', async () => {
@@ -217,7 +186,7 @@ const getFileContentsByLine = async ({
 	const fileExists = await checkFileExists(filePath)
 
 	if (!fileExists && !createIfNotExists) {
-		console.error(chalk.red('File not found:'), filePath)
+		console.error(red('File not found:'), filePath)
 		process.exit(1)
 	} else if (!fileExists && createIfNotExists) {
 		await fs.writeFile(filePath, '')
@@ -229,41 +198,39 @@ const getFileContentsByLine = async ({
 	}
 }
 
-const loadWhile = async <T>(message: string, cb: () => T, {
-	successMessage,
-	failureMessage,
-	throwOnError = true,
-}: {
-	successMessage?: string | ((result: T) => string),
-	failureMessage?: string | ((error: Error) => string),
+type LoadWhileOptions<T> = {
+	successMessage?: string | ((result: T) => string)
+	failureMessage?: string | ((error: Error) => string)
 	throwOnError?: boolean
-} = {}) => {
+}
+
+const loadWhile = async <T>(
+	message: string,
+	callback: () => T,
+	options: LoadWhileOptions<T> = {}
+): Promise<T | null> => {
+	const { successMessage, failureMessage, throwOnError = true } = options
 	const spinner = ora(message).start()
 
 	try {
-		const result = await cb()
-		if (successMessage && typeof successMessage === 'function') {
-			successMessage = successMessage(result)
-		}
-
-		spinner.succeed(successMessage ?? message)
-
+		const result = await callback()
+		
+		const finalMessage = typeof successMessage === 'function'
+			? successMessage(result)
+			: successMessage ?? message
+		
+		spinner.succeed(finalMessage)
 		return result
 	} catch (error) {
-		if (!failureMessage && error instanceof Error) {
-			spinner.fail(error.message)
-		}
-
+		const errorObj = error instanceof Error ? error : new Error('Unknown error has occurred.')
+		
 		if (failureMessage) {
-			if (typeof failureMessage === 'function') {
-				if (error instanceof Error) {
-					spinner.fail(failureMessage(error))
-				} else {
-					spinner.fail(failureMessage(new Error('Unknown error has occurred.')))
-				}
-			} else {
-				spinner.fail(failureMessage)
-			}
+			const finalFailureMessage = typeof failureMessage === 'function'
+				? failureMessage(errorObj)
+				: failureMessage
+			spinner.fail(finalFailureMessage)
+		} else {
+			spinner.fail(errorObj.message)
 		}
 
 		if (throwOnError) {
@@ -309,14 +276,10 @@ const promptForFilePath = async (files: string[], message: string) => {
 }
 
 const highlightFuzzyMatches = (files: string[], input: string) => {
-	const matches = fuzz.fuzzyFilter(files.map((filename) => {
-		return {
-			filename,
-		}
-	}), input, {
-		fields: [
-			'filename',
-		],
+	const fileItems = files.map(filename => ({ filename }))
+	
+	const matches = fuzz.fuzzyFilter(fileItems, input, {
+		fields: ['filename'],
 	})
 
 	const highlightedMatches = matches.map((match) => {
@@ -324,21 +287,18 @@ const highlightFuzzyMatches = (files: string[], input: string) => {
 			return match.item.filename
 		}
 
-		return match.highlights.filename?.map((namePiece, index) => {
-			if (index % 2 === 0) {
-				return namePiece
-			}
-
-			return chalk.green(bold(namePiece))
-		}).join('')
+		return match.highlights.filename
+			.map((namePiece, index) => {
+				// Even indices are non-matching parts, odd indices are matches
+				return index % 2 === 0 ? namePiece : green(bold(namePiece))
+			})
+			.join('')
 	})
 
-	return highlightedMatches.map((name, value) => {
-		return {
-			name,
-			value: path.join(process.cwd(), name),
-		}
-	})
+	return highlightedMatches.map((name) => ({
+		name,
+		value: path.join(process.cwd(), name),
+	}))
 }
 
 const autoDetectFilePath = async (files: string[], filenameToDetect: string) => {
