@@ -71,7 +71,7 @@ DB_URL="postgres://localhost"`,
 			// Run CLI in non-interactive mode (using environment variable)
 			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				shell: true,
+				shell: '/bin/sh',
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
@@ -91,7 +91,7 @@ DB_URL="postgres://localhost"`,
 
 			execSync(`cd "${tempDir}" && CI=true node "${cliPath}" -i .env.template -o .env.local`, {
 				encoding: 'utf-8',
-				shell: true,
+				shell: '/bin/sh',
 			})
 
 			const result = readFileSync(customEnvPath, 'utf-8')
@@ -106,7 +106,7 @@ DB_URL="postgres://localhost"`,
 
 			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				shell: true,
+				shell: '/bin/sh',
 			})
 
 			expect(existsSync(envPath)).toBe(true)
@@ -133,7 +133,7 @@ STRAY_A="a"`,
 
 			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				shell: true,
+				shell: '/bin/sh',
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
@@ -155,7 +155,7 @@ STRAY_A="a"`,
 			try {
 				execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 					encoding: 'utf-8',
-					shell: true,
+					shell: '/bin/sh',
 				})
 				expect.fail('Should have thrown an error')
 			} catch (error: unknown) {
@@ -168,7 +168,7 @@ STRAY_A="a"`,
 			try {
 				execSync(`cd "${tempDir}" && CI=true node "${cliPath}" -i .env.nonexistent`, {
 					encoding: 'utf-8',
-					shell: true,
+					shell: '/bin/sh',
 				})
 				expect.fail('Should have thrown an error')
 			} catch (error: unknown) {
@@ -206,7 +206,7 @@ VAR4="custom4"`,
 
 			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				shell: true,
+				shell: '/bin/sh',
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
@@ -236,7 +236,7 @@ EMPTY=""`,
 
 			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				shell: true,
+				shell: '/bin/sh',
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
