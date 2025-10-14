@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { resolve } from 'path'
 import { input, select } from '@inquirer/prompts'
 import chalk from 'chalk'
 import ora from 'ora'
@@ -108,16 +109,17 @@ async function resolveValue(
 }
 
 export async function syncEnvFiles(options: SyncOptions = {}): Promise<void> {
-	const envExampleFile = options.envExampleFile || '.env.example'
-	const envFile = options.envFile || '.env'
+	const envExampleFile = resolve(process.cwd(), options.envExampleFile || '.env.example')
+	const envFile = resolve(process.cwd(), options.envFile || '.env')
 	const interactive = options.interactive ?? true
 
 	const spinner = interactive ? ora('Reading environment files...').start() : null
 
 	try {
 		if (!existsSync(envExampleFile)) {
-			spinner?.fail(`${envExampleFile} file not found`)
-			throw new Error(`${envExampleFile} file not found`)
+			const displayPath = options.envExampleFile || '.env.example'
+			spinner?.fail(`${displayPath} file not found`)
+			throw new Error(`${displayPath} file not found`)
 		}
 
 		const exampleContent = readFileSync(envExampleFile, 'utf-8')
@@ -182,14 +184,19 @@ export async function syncEnvFiles(options: SyncOptions = {}): Promise<void> {
 		const finalContent = output.join('\n')
 		writeFileSync(envFile, finalContent)
 
+		const displayEnvFile = options.envFile || '.env'
+		const displayEnvExampleFile = options.envExampleFile || '.env.example'
+
 		writeSpinner?.succeed(
-			chalk.green(`Successfully synced ${chalk.bold(envFile)} with ${chalk.bold(envExampleFile)}`),
+			chalk.green(
+				`Successfully synced ${chalk.bold(displayEnvFile)} with ${chalk.bold(displayEnvExampleFile)}`,
+			),
 		)
 
 		if (strayEntries.length > 0 && interactive) {
 			console.log(
 				chalk.yellow(
-					`\n⚠ ${String(strayEntries.length)} additional variables were moved to the bottom of ${envFile}`,
+					`\n⚠ ${String(strayEntries.length)} additional variables were moved to the bottom of ${displayEnvFile}`,
 				),
 			)
 		}

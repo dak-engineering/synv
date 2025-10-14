@@ -1,5 +1,5 @@
 import { execSync } from 'child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -10,7 +10,8 @@ describe('CLI End-to-End Tests', () => {
 
 	beforeEach(() => {
 		// Create a temporary directory for test files
-		tempDir = mkdtempSync(join(tmpdir(), 'synv-test-'))
+		// Use realpathSync to normalize the path (handles /var vs /private/var on macOS)
+		tempDir = realpathSync(mkdtempSync(join(tmpdir(), 'synv-test-')))
 	})
 
 	afterEach(() => {
@@ -68,10 +69,9 @@ DB_URL="postgres://localhost"`,
 			)
 
 			// Run CLI in non-interactive mode (using environment variable)
-			execSync(`node ${cliPath}`, {
-				cwd: tempDir,
+			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				env: { ...process.env, CI: 'true' },
+				shell: true,
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
@@ -89,10 +89,9 @@ DB_URL="postgres://localhost"`,
 			writeFileSync(customExamplePath, `API_KEY=""`)
 			writeFileSync(customEnvPath, `API_KEY="secret123"`)
 
-			execSync(`node ${cliPath} -i .env.template -o .env.local`, {
-				cwd: tempDir,
+			execSync(`cd "${tempDir}" && CI=true node "${cliPath}" -i .env.template -o .env.local`, {
 				encoding: 'utf-8',
-				env: { ...process.env, CI: 'true' },
+				shell: true,
 			})
 
 			const result = readFileSync(customEnvPath, 'utf-8')
@@ -105,10 +104,9 @@ DB_URL="postgres://localhost"`,
 
 			writeFileSync(envExamplePath, `NEW_VAR="default"`)
 
-			execSync(`node ${cliPath}`, {
-				cwd: tempDir,
+			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				env: { ...process.env, CI: 'true' },
+				shell: true,
 			})
 
 			expect(existsSync(envPath)).toBe(true)
@@ -133,10 +131,9 @@ STRAY_B="b"
 STRAY_A="a"`,
 			)
 
-			execSync(`node ${cliPath}`, {
-				cwd: tempDir,
+			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				env: { ...process.env, CI: 'true' },
+				shell: true,
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
@@ -156,10 +153,9 @@ STRAY_A="a"`,
 	describe('Error handling', () => {
 		it('should fail gracefully when .env.example does not exist', () => {
 			try {
-				execSync(`node ${cliPath}`, {
-					cwd: tempDir,
+				execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 					encoding: 'utf-8',
-					env: { ...process.env, CI: 'true' },
+					shell: true,
 				})
 				expect.fail('Should have thrown an error')
 			} catch (error: unknown) {
@@ -170,10 +166,9 @@ STRAY_A="a"`,
 
 		it('should fail with custom example file path that does not exist', () => {
 			try {
-				execSync(`node ${cliPath} -i .env.nonexistent`, {
-					cwd: tempDir,
+				execSync(`cd "${tempDir}" && CI=true node "${cliPath}" -i .env.nonexistent`, {
 					encoding: 'utf-8',
-					env: { ...process.env, CI: 'true' },
+					shell: true,
 				})
 				expect.fail('Should have thrown an error')
 			} catch (error: unknown) {
@@ -209,10 +204,9 @@ VAR3="custom3"
 VAR4="custom4"`,
 			)
 
-			execSync(`node ${cliPath}`, {
-				cwd: tempDir,
+			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				env: { ...process.env, CI: 'true' },
+				shell: true,
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
@@ -240,10 +234,9 @@ EMPTY=""`,
 
 			writeFileSync(envPath, `FILLED="has value"`)
 
-			execSync(`node ${cliPath}`, {
-				cwd: tempDir,
+			execSync(`cd "${tempDir}" && CI=true node "${cliPath}"`, {
 				encoding: 'utf-8',
-				env: { ...process.env, CI: 'true' },
+				shell: true,
 			})
 
 			const result = readFileSync(envPath, 'utf-8')
@@ -257,7 +250,8 @@ describe('CLI Interactive Tests', () => {
 	let tempDir: string
 
 	beforeEach(() => {
-		tempDir = mkdtempSync(join(tmpdir(), 'synv-interactive-test-'))
+		// Use realpathSync to normalize the path (handles /var vs /private/var on macOS)
+		tempDir = realpathSync(mkdtempSync(join(tmpdir(), 'synv-interactive-test-')))
 	})
 
 	afterEach(() => {
@@ -270,14 +264,14 @@ describe('CLI Interactive Tests', () => {
 		const envExamplePath = join(tempDir, '.env.example')
 		const envPath = join(tempDir, '.env')
 
-		writeFileSync(envExamplePath, `CONFLICT_VAR="example_value"`)
-		writeFileSync(envPath, `CONFLICT_VAR="current_value"`)
-
 		// Note: In a real scenario, we would need to use a library like 'node-pty'
 		// or 'execa' with stdin simulation to test interactive prompts.
 		// For now, we're testing that the interactive mode would be triggered.
 
 		// This test confirms the setup is correct for interactive mode
+		writeFileSync(envExamplePath, `CONFLICT_VAR="example_value"`)
+		writeFileSync(envPath, `CONFLICT_VAR="current_value"`)
+
 		expect(existsSync(envExamplePath)).toBe(true)
 		expect(existsSync(envPath)).toBe(true)
 	})
